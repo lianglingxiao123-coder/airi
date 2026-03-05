@@ -14,7 +14,7 @@ import { createLoggLogger, injeca } from 'injeca'
 import { createAuth } from './libs/auth'
 import { createDrizzle, migrateDatabase } from './libs/db'
 import { parsedEnv } from './libs/env'
-import { initOtel } from './libs/otel'
+import { otelInstance } from './instrument'
 import { createRedis } from './libs/redis'
 import { sessionMiddleware } from './middlewares/auth'
 import { otelMiddleware } from './middlewares/otel'
@@ -41,7 +41,7 @@ type FluxService = ReturnType<typeof createFluxService>
 type ConfigKVService = ReturnType<typeof createConfigKVService>
 type StripeDBService = ReturnType<typeof createStripeService>
 
-type OtelMetrics = ReturnType<typeof initOtel>
+type OtelMetrics = typeof otelInstance
 
 interface AppDeps {
   auth: AuthService
@@ -143,10 +143,14 @@ async function createApp() {
   injeca.setLogger(createLoggLogger(useLogger('injeca').useGlobalConfig()))
   const logger = useLogger('app').useGlobalConfig()
 
-  // Initialize OpenTelemetry (safe to skip if OTEL endpoint is not configured)
-  let otel: OtelMetrics | null = null
-  if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-    otel = initOtel()
+  // OTel is initialized via --import ./src/instrument.ts before app loads.
+  // This ensures auto-instrumentations (http, pg, ioredis) can patch modules
+  // before they are imported.
+  const otel: OtelMetrics | null = process.env.OTEL_EXPORTER_OTLP_ENDPOINT
+    ? otelInstance
+    : null
+
+  if (otel) {
     logger.log('OpenTelemetry observability enabled')
   }
   else {
