@@ -23,6 +23,7 @@ const stageUIAssetsRoot = resolve(join(import.meta.dirname, '..', '..', 'package
 const sharedCacheDir = resolve(join(import.meta.dirname, '..', '..', '.cache'))
 
 export default defineConfig({
+  base: env.BASE_URL || '/',
   optimizeDeps: {
     exclude: [
       // Internal Packages
